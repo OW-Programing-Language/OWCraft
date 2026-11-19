@@ -4,12 +4,13 @@
 
 OWCraft is an early-stage **game project**, separate from [OW-Engine](https://github.com/OW-Programing-Language/OW-Engine). The engine remains a reusable general-purpose 2D/3D game framework; OWCraft implements voxel-specific gameplay on top of it.
 
-## Status — first foundation PR
+## Status — chunk storage foundation
 
-The initial version is **headless**. It does not render a voxel world yet.
+The current version is **headless**. It stores editable voxel chunks, but it does not render terrain yet.
 
 - Real OW game bootstrap using **flOW**, OW-Engine's ECS, named scenes, deterministic fixed-step runtime and movement system.
 - OWCraft-owned block catalog with stable block IDs: air, grass, dirt, stone, glass and water.
+- **Phase 2:** 16×16×16 flat voxel chunks, signed coordinate conversion, placement/destruction, bounded 32-chunk storage and per-chunk revision counters.
 - Source dependencies managed by **SHA-pinned `dependencies.yml`**; no engine or graphics code copied into this repo.
 - Optional **headless OW-Graphics** integration test through OW-Engine's RenderWorld and camera contracts.
 - GitHub Actions builds and checks the code on Java 17.
@@ -38,6 +39,10 @@ ow run src/main.ow
 ow run tests/headless_boot.ow
 ow run tests/headless_blocks.ow
 ow run tests/headless_graphics.ow
+ow run tests/headless_chunks.ow
+ow run tests/headless_world.ow
+ow run tests/headless_game_world.ow
+ow run tests/headless_capacity.ow
 ```
 
 The headless tests need **no GPU, OpenGL or native bridge**. With a source-built compiler you can use `java -jar /path/to/ow-lang/target/OwIDE.jar` in place of `ow`.
@@ -51,24 +56,33 @@ src/
   craft/
     CraftGame.ow                   # flOW + Engine game composition
     blocks/BlockCatalog.ow        # block materials and stable IDs
+    world/Chunk.ow                # 4096 voxel slots per chunk
+    world/WorldStore.ow           # chunk lookup, edits and eviction
+    modules/CraftWorldModule.ow   # flOW service: craft.world
     modules/CraftBlocksModule.ow  # flOW service "craft.blocks"
 tests/
   headless_boot.ow                 # ECS world, movement and lifecycle
   headless_blocks.ow               # block type validation
   headless_graphics.ow             # OW Engine / Graphics integration
+  headless_chunks.ow               # chunk index and mutation contracts
+  headless_world.ow                # signed world coordinates and block edits
+  headless_game_world.ow           # flOW game world integration
+  headless_capacity.ow             # chunk count bound / eviction
 .github/workflows/verify.yml       # CI
 ```
 
 ## Roadmap
 
 1. **PR #1 — Foundation:** flOW, engine/graphics dependencies, initial world and player, block catalog, CI.
-2. **PR #2 — Voxels:** compact chunk storage (16×16×16), chunk coordinates, placement/removal and boundary tests.
+2. **PR #2 — Voxels:** 16×16×16 chunk storage, signed coordinates, placement/removal and boundary tests.
 3. **PR #3 — Terrain:** deterministic seeded terrain and region streaming.
 4. **PR #4 — Rendering:** visible-face meshing, chunk draw batching, terrain rendered via OW Graphics.
 5. **PR #5 — Gameplay:** block interaction, ray casting, inventory and survival mechanics.
 6. **Later:** robust saves, world streaming, performance, multiplayer, cross-platform packaging.
 
 Physics, collision and general-purpose input capabilities should be implemented in OW-Engine, not duplicated here. The roadmap is aspirational: performance and compiler constraints will be measured as features land.
+
+See [Chunk and World APIs](docs/WORLD-CHUNKS.md) for coordinate conventions, limits and return codes.
 
 ## License
 
