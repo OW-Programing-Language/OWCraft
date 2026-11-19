@@ -1,0 +1,35 @@
+# Real terrain seeded with PR #3, meshed with PR #4.
+import "../src/craft/blocks/BlockCatalog.ow"
+import "../src/craft/world/WorldStore.ow"
+import "../src/craft/terrain/TerrainGenerator.ow"
+import "../src/craft/render/ChunkMesher.ow"
+
+main:
+  set catalog: new BlockCatalog()
+  set world: new WorldStore(catalog)
+  set terrain: new TerrainGenerator(world, catalog, 42)
+  set mesher: new ChunkMesher(world, catalog)
+  call: assert(terrain.generate_column(0, 0) == 1)
+  set lower: mesher.build(0, 0, 0)
+  set upper: mesher.build(0, 1, 0)
+  call: assert(lower != 0)
+  call: assert(upper != 0)
+  call: assert(lower.face_total() > 0)
+  call: assert(lower.face_total() < world.chunk_at(0, 0, 0).occupied_count() * 6)
+  call: assert(upper.face_total() > 0)
+  call: assert(lower.vertex_total() == lower.face_total() * 4)
+  call: assert(len(lower.positions) == lower.face_total() * 12)
+  call: assert(len(lower.uvs) == lower.face_total() * 8)
+  call: assert(len(lower.normals) == lower.face_total() * 12)
+  call: assert(len(lower.indices) == lower.face_total() * 6)
+  call: assert(upper.vertex_total() == upper.face_total() * 4)
+  call: assert(len(upper.positions) == upper.face_total() * 12)
+  call: assert(lower.face_total() + upper.face_total() < world.occupied_blocks() * 6)
+  set previous int: world.chunk_at(0, 0, 0).version()
+  call: assert(world.place_block(0, 12, 0, 4) == 1)
+  call: assert(world.chunk_at(0, 0, 0).version() == previous + 1)
+  set rebuilt: mesher.build(0, 0, 0)
+  call: assert(rebuilt.face_total() > 0)
+  call: assert(rebuilt.vertex_total() == rebuilt.face_total() * 4)
+  call: assert(world.get_block(0, 12, 0) == 4)
+  print: "PASS: generated world meshed into compact indexed geometry and rebuilt after edit"
