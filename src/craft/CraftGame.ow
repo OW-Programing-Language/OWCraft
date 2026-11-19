@@ -8,6 +8,7 @@ import "@engine/src/engine/modules/EngineRuntimeModule.ow"
 import "@engine/src/engine/systems/MovementSystem.ow"
 import "modules/CraftBlocksModule.ow"
 import "modules/CraftWorldModule.ow"
+import "modules/CraftTerrainModule.ow"
 
 class CraftGame:
   field app
@@ -18,6 +19,7 @@ class CraftGame:
   field entities
   field blocks
   field world
+  field terrain
   field player_id
   field started
 
@@ -29,10 +31,12 @@ class CraftGame:
     set runtime_module: new EngineRuntimeModule(scene_module.store(), 16)
     set blocks_module: new CraftBlocksModule()
     set world_module: new CraftWorldModule(blocks_module.store())
+    set terrain_module: new CraftTerrainModule(world_module.store(), blocks_module.store(), 12345)
     set this.app: new App()
     # Register out of dependency order: flOW resolves the correct startup graph.
     call: this.app.use(runtime_module)
     call: this.app.use(system_module)
+    call: this.app.use(terrain_module)
     call: this.app.use(world_module)
     call: this.app.use(blocks_module)
     call: this.app.use(component_module)
@@ -53,6 +57,7 @@ class CraftGame:
     set this.runtime: this.app.service("runtime")
     set this.blocks: this.app.service("craft.blocks")
     set this.world: this.app.service("craft.world")
+    set this.terrain: this.app.service("craft.terrain")
     if: this.scenes.attach_components(this.components) == 0
       return: 0
     if: this.runtime.attach_systems(this.systems, this.components) == 0
@@ -115,6 +120,36 @@ class CraftGame:
     if: this.started == 0
       return: 0 - 1
     return: this.world.get_block(x, y, z)
+
+  fn terrain_generator():
+    if: this.started == 0
+      return: 0
+    return: this.terrain
+
+  fn terrain_height(x int, z int):
+    if: this.started == 0
+      return: 0 - 1
+    return: this.terrain.height_at(x, z)
+
+  fn set_world_seed(seed int):
+    if: this.started == 0
+      return: 0
+    return: this.terrain.set_seed(seed)
+
+  fn generate_terrain_chunk(cx int, cy int, cz int):
+    if: this.started == 0
+      return: 0
+    return: this.terrain.generate_chunk(cx, cy, cz)
+
+  fn generate_terrain_column(cx int, cz int):
+    if: this.started == 0
+      return: 0
+    return: this.terrain.generate_column(cx, cz)
+
+  fn generate_terrain_region(cx int, cz int, width int, depth int):
+    if: this.started == 0
+      return: 0
+    return: this.terrain.generate_region(cx, cz, width, depth)
 
   fn scene_name():
     if: this.started == 0

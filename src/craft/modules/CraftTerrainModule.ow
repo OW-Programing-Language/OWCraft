@@ -1,0 +1,34 @@
+import "../terrain/TerrainGenerator.ow"
+
+# OWCraft-specific terrain generation, no changes required in OW Engine.
+class CraftTerrainModule(Module):
+  field generator
+
+  fn new(world, catalog, seed int):
+    set this.generator: new TerrainGenerator(world, catalog, seed)
+
+  fn name():
+    return: "craft.terrain"
+
+  fn requires():
+    return: ["craft.world", "craft.blocks"]
+
+  fn register(app):
+    call: app.require_as("craft.terrain", "craft.world", "CRAFT_WORLD")
+    call: app.require_as("craft.terrain", "craft.blocks", "CRAFT_BLOCKS")
+    return: app.provide_as("craft.terrain", "CRAFT_TERRAIN", this.generator)
+
+  fn start(app):
+    return: 0
+
+  fn stop(app):
+    return: 0
+
+  fn reload(app):
+    return: 0
+
+  fn on_event(type, payload):
+    return: 0
+
+  fn store():
+    return: this.generator
