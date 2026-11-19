@@ -1,0 +1,105 @@
+import "ChunkMesh.ow"
+
+# Visible-face-only meshing. No faces are generated between opaque blocks.
+# Calls to WorldStore.get_block handle +/- coordinates and adjacent chunks.
+# A missing neighbor is treated as empty for now; remesh when it loads.
+class ChunkMesher:
+  field world
+  field catalog
+
+  fn new(world, catalog):
+    set this.world: world
+    set this.catalog: catalog
+
+  fn face_visible(block_id int, neighbor int):
+    if: neighbor <= 0
+      return: 1
+    if: neighbor == block_id
+      return: 0
+    # Glass/water are represented with opaque colors in the first GPU demo.
+    # Cull faces against opaque neighbors to avoid hidden internal quads.
+    if: block_id == 4
+      if: neighbor != 5
+        return: 0
+    if: block_id == 5
+      if: neighbor != 4
+        return: 0
+    if: neighbor == 4
+      return: 1
+    if: neighbor == 5
+      return: 1
+    return: 0
+
+  fn neighbor_id(wx int, wy int, wz int, direction int):
+    if: direction == 0
+      return: this.world.get_block(wx + 1, wy, wz)
+    if: direction == 1
+      return: this.world.get_block(wx - 1, wy, wz)
+    if: direction == 2
+      return: this.world.get_block(wx, wy + 1, wz)
+    if: direction == 3
+      return: this.world.get_block(wx, wy - 1, wz)
+    if: direction == 4
+      return: this.world.get_block(wx, wy, wz + 1)
+    return: this.world.get_block(wx, wy, wz - 1)
+
+  # Count faces first: exact-size arrays, no append/slice runtime dependency.
+  fn count_faces(cx int, cy int, cz int):
+    set chunk: this.world.chunk_at(cx, cy, cz)
+    if: chunk == 0
+      return: 0 - 1
+    set count int: 0
+    set ly int: 0
+    while: ly < 16
+      set lz int: 0
+      while: lz < 16
+        set lx int: 0
+        while: lx < 16
+          set block_id int: chunk.get_block(lx, ly, lz)
+          if: block_id > 0
+            set wx int: cx * 16 + lx
+            set wy int: cy * 16 + ly
+            set wz int: cz * 16 + lz
+            set direction int: 0
+            while: direction < 6
+              set neighbor int: this.neighbor_id(wx, wy, wz, direction)
+              if: this.face_visible(block_id, neighbor) == 1
+                set count: count + 1
+              set direction: direction + 1
+          set lx: lx + 1
+        set lz: lz + 1
+      set ly: ly + 1
+    return: count
+
+  # Returns a ChunkMesh or 0 for absent/oversize chunks.
+  # Do not upload empty meshes: Graphics requires >= 3 indexed vertices.
+  fn build(cx int, cy int, cz int):
+    set expected int: this.count_faces(cx, cy, cz)
+    if: expected < 0
+      return: 0
+    if: expected > 12000
+      return: 0
+    set chunk: this.world.chunk_at(cx, cy, cz)
+    set mesh: new ChunkMesh(expected)
+    set ly int: 0
+    while: ly < 16
+      set lz int: 0
+      while: lz < 16
+        set lx int: 0
+        while: lx < 16
+          set block_id int: chunk.get_block(lx, ly, lz)
+          if: block_id > 0
+            set wx int: cx * 16 + lx
+            set wy int: cy * 16 + ly
+            set wz int: cz * 16 + lz
+            set direction int: 0
+            while: direction < 6
+              set neighbor int: this.neighbor_id(wx, wy, wz, direction)
+              if: this.face_visible(block_id, neighbor) == 1
+                call: assert(mesh.add_face(wx, wy, wz, direction, block_id) == 1)
+              set direction: direction + 1
+          set lx: lx + 1
+        set lz: lz + 1
+      set ly: ly + 1
+    call: assert(mesh.face_total() == expected, "face visibility count must be stable during build")
+    return: mesh

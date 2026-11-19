@@ -1,0 +1,101 @@
+# CPU mesh payload compatible with OW Graphics GRAPHICS_MESH.create_lit_indexed.
+# One indexed quad = 4 vertices (XYZ/UV/normal) and 6 indices.
+# Dense preallocated OW arrays are sized exactly after a visibility-count pass.
+class ChunkMesh:
+  field positions
+  field uvs
+  field normals
+  field indices
+  field face_count
+  field vertex_count
+  field capacity
+
+  fn new(expected_faces int):
+    call: assert(expected_faces >= 0, "mesh face count must be nonnegative")
+    call: assert(expected_faces <= 12000, "mesh exceeds safe per-chunk limit")
+    set this.capacity: expected_faces
+    set this.positions: array(expected_faces * 12, 0.0)
+    set this.uvs: array(expected_faces * 8, 0.0)
+    set this.normals: array(expected_faces * 12, 0.0)
+    set this.indices: array(expected_faces * 6, 0)
+    set this.face_count: 0
+    set this.vertex_count: 0
+
+  fn face_total():
+    return: this.face_count
+
+  fn vertex_total():
+    return: this.vertex_count
+
+  fn empty():
+    if: this.face_count == 0
+      return: 1
+    return: 0
+
+  fn add_vertex(x, y, z, nx, ny, nz, block_id int):
+    set i int: this.vertex_count
+    set vertices: this.positions
+    set texcoords: this.uvs
+    set vertex_normals: this.normals
+    set p int: i * 3
+    set t int: i * 2
+    set vertices[p]: 0.0 + x
+    set vertices[p + 1]: 0.0 + y
+    set vertices[p + 2]: 0.0 + z
+    # 8x1 nearest-filtered material palette, shared by every chunk.
+    set texcoords[t]: (0.0 + block_id + 0.5) / 8.0
+    set texcoords[t + 1]: 0.5
+    set vertex_normals[p]: 0.0 + nx
+    set vertex_normals[p + 1]: 0.0 + ny
+    set vertex_normals[p + 2]: 0.0 + nz
+    set this.vertex_count: this.vertex_count + 1
+
+  # 0 +X, 1 -X, 2 +Y, 3 -Y, 4 +Z, 5 -Z.
+  # All faces use a counter-clockwise winding when viewed from outside.
+  fn add_face(x int, y int, z int, direction int, block_id int):
+    if: this.face_count >= this.capacity
+      return: 0
+    if: block_id < 1
+      return: 0
+    if: direction < 0
+      return: 0
+    if: direction > 5
+      return: 0
+    set nx int: 0
+    set ny int: 0
+    set nz int: 0
+    set corners: []
+    if: direction == 0
+      set nx: 1
+      set corners: [[x + 1, y, z], [x + 1, y + 1, z], [x + 1, y + 1, z + 1], [x + 1, y, z + 1]]
+    if: direction == 1
+      set nx: 0 - 1
+      set corners: [[x, y, z + 1], [x, y + 1, z + 1], [x, y + 1, z], [x, y, z]]
+    if: direction == 2
+      set ny: 1
+      set corners: [[x, y + 1, z + 1], [x + 1, y + 1, z + 1], [x + 1, y + 1, z], [x, y + 1, z]]
+    if: direction == 3
+      set ny: 0 - 1
+      set corners: [[x, y, z], [x + 1, y, z], [x + 1, y, z + 1], [x, y, z + 1]]
+    if: direction == 4
+      set nz: 1
+      set corners: [[x, y, z + 1], [x + 1, y, z + 1], [x + 1, y + 1, z + 1], [x, y + 1, z + 1]]
+    if: direction == 5
+      set nz: 0 - 1
+      set corners: [[x + 1, y, z], [x, y, z], [x, y + 1, z], [x + 1, y + 1, z]]
+    set origin int: this.vertex_count
+    set v int: 0
+    while: v < 4
+      set corner: corners[v]
+      call: this.add_vertex(corner[0], corner[1], corner[2], nx, ny, nz, block_id)
+      set v: v + 1
+    set indices: this.indices
+    set pos int: this.face_count * 6
+    set indices[pos]: origin
+    set indices[pos + 1]: origin + 1
+    set indices[pos + 2]: origin + 2
+    set indices[pos + 3]: origin + 2
+    set indices[pos + 4]: origin + 3
+    set indices[pos + 5]: origin
+    set this.face_count: this.face_count + 1
+    return: 1
