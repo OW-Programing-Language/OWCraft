@@ -10,6 +10,12 @@ main:
   call: assert(game.set_player_velocity(125.0, 0.0, 0.0) == 1)
   call: assert(game.tick(48) == 3)
   set position: game.player_position()
+  call: assert(game.place_block(0, 0, 0, 1) == 1)
+  call: assert(game.place_block(16, 0, 0, 3) == 1)
+  call: assert(game.place_block(0 - 1, 0, 0, 2) == 1)
+  call: assert(game.world_store().chunk_count() == 3)
+  call: assert(game.get_block(16, 0, 0) == 3)
   print: "OWCraft / overworld: player x=" + position[0]
+  print: "chunks=" + game.world_store().chunk_count() + " voxels=" + game.world_store().occupied_blocks()
   print: "blocks registered=" + game.block_catalog().count() + ", ticks=" + game.tick_count()
   call: assert(game.stop() == 1)

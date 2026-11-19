@@ -7,6 +7,7 @@ import "@engine/src/engine/modules/EngineSystemsModule.ow"
 import "@engine/src/engine/modules/EngineRuntimeModule.ow"
 import "@engine/src/engine/systems/MovementSystem.ow"
 import "modules/CraftBlocksModule.ow"
+import "modules/CraftWorldModule.ow"
 
 class CraftGame:
   field app
@@ -16,6 +17,7 @@ class CraftGame:
   field systems
   field entities
   field blocks
+  field world
   field player_id
   field started
 
@@ -26,10 +28,12 @@ class CraftGame:
     set system_module: new EngineSystemsModule()
     set runtime_module: new EngineRuntimeModule(scene_module.store(), 16)
     set blocks_module: new CraftBlocksModule()
+    set world_module: new CraftWorldModule(blocks_module.store())
     set this.app: new App()
     # Register out of dependency order: flOW resolves the correct startup graph.
     call: this.app.use(runtime_module)
     call: this.app.use(system_module)
+    call: this.app.use(world_module)
     call: this.app.use(blocks_module)
     call: this.app.use(component_module)
     call: this.app.use(scene_module)
@@ -48,6 +52,7 @@ class CraftGame:
     set this.systems: this.app.service("systems")
     set this.runtime: this.app.service("runtime")
     set this.blocks: this.app.service("craft.blocks")
+    set this.world: this.app.service("craft.world")
     if: this.scenes.attach_components(this.components) == 0
       return: 0
     if: this.runtime.attach_systems(this.systems, this.components) == 0
@@ -90,6 +95,26 @@ class CraftGame:
 
   fn block_catalog():
     return: this.blocks
+
+  fn world_store():
+    if: this.started == 0
+      return: 0
+    return: this.world
+
+  fn place_block(x int, y int, z int, block_id int):
+    if: this.started == 0
+      return: 0
+    return: this.world.place_block(x, y, z, block_id)
+
+  fn break_block(x int, y int, z int):
+    if: this.started == 0
+      return: 0
+    return: this.world.break_block(x, y, z)
+
+  fn get_block(x int, y int, z int):
+    if: this.started == 0
+      return: 0 - 1
+    return: this.world.get_block(x, y, z)
 
   fn scene_name():
     if: this.started == 0

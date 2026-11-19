@@ -1,0 +1,22 @@
+# Exhaust chunk slots, ensure failure is non-destructive.
+import "../src/craft/blocks/BlockCatalog.ow"
+import "../src/craft/world/WorldStore.ow"
+
+main:
+  set catalog: new BlockCatalog()
+  set world: new WorldStore(catalog)
+  set i int: 0
+  while: i < world.max_chunks()
+    call: assert(world.place_block(i * 16, 0, 0, 1) == 1)
+    set i: i + 1
+  call: assert(world.chunk_count() == 32)
+  call: assert(world.occupied_blocks() == 32)
+  call: assert(world.place_block(512, 0, 0, 1) == 0, "capacity enforced")
+  call: assert(world.chunk_count() == 32)
+  call: assert(world.get_block(512, 0, 0) == 0 - 1)
+  call: assert(world.remove_chunk(0, 0, 0) == 1)
+  call: assert(world.chunk_count() == 31)
+  call: assert(world.place_block(512, 0, 0, 1) == 1)
+  call: assert(world.chunk_count() == 32)
+  call: assert(world.occupied_blocks() == 32)
+  print: "PASS: bounded chunk capacity and reusable slots"
