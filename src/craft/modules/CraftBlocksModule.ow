@@ -1,0 +1,32 @@
+import "../blocks/BlockCatalog.ow"
+
+# OWCraft gameplay module. Deliberately independent of the generic engine.
+class CraftBlocksModule(Module):
+  field catalog
+
+  fn new():
+    set this.catalog: new BlockCatalog()
+
+  fn name():
+    return: "craft.blocks"
+
+  fn requires():
+    return: []
+
+  fn register(app):
+    return: app.provide_as("craft.blocks", "CRAFT_BLOCKS", this.catalog)
+
+  fn start(app):
+    return: 0
+
+  fn stop(app):
+    return: 0
+
+  fn reload(app):
+    return: 0
+
+  fn on_event(type, payload):
+    return: 0
+
+  fn store():
+    return: this.catalog

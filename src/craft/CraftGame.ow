@@ -1,0 +1,103 @@
+# Headless game composition. Host window/rendering is supplied by OW Graphics.
+import "@flow/src/App.ow"
+import "@engine/src/engine/modules/EngineEntitiesModule.ow"
+import "@engine/src/engine/modules/EngineScenesModule.ow"
+import "@engine/src/engine/modules/EngineComponentsModule.ow"
+import "@engine/src/engine/modules/EngineSystemsModule.ow"
+import "@engine/src/engine/modules/EngineRuntimeModule.ow"
+import "@engine/src/engine/systems/MovementSystem.ow"
+import "modules/CraftBlocksModule.ow"
+
+class CraftGame:
+  field app
+  field scenes
+  field components
+  field runtime
+  field systems
+  field entities
+  field blocks
+  field player_id
+  field started
+
+  fn new():
+    set entity_module: new EngineEntitiesModule()
+    set scene_module: new EngineScenesModule(entity_module.store())
+    set component_module: new EngineComponentsModule(entity_module.store())
+    set system_module: new EngineSystemsModule()
+    set runtime_module: new EngineRuntimeModule(scene_module.store(), 16)
+    set blocks_module: new CraftBlocksModule()
+    set this.app: new App()
+    # Register out of dependency order: flOW resolves the correct startup graph.
+    call: this.app.use(runtime_module)
+    call: this.app.use(system_module)
+    call: this.app.use(blocks_module)
+    call: this.app.use(component_module)
+    call: this.app.use(scene_module)
+    call: this.app.use(entity_module)
+    set this.started: 0
+    set this.player_id: 0
+
+  fn start():
+    if: this.started == 1
+      return: 0
+    if: this.app.boot() == 0
+      return: 0
+    set this.entities: this.app.service("entities")
+    set this.scenes: this.app.service("scenes")
+    set this.components: this.app.service("components")
+    set this.systems: this.app.service("systems")
+    set this.runtime: this.app.service("runtime")
+    set this.blocks: this.app.service("craft.blocks")
+    if: this.scenes.attach_components(this.components) == 0
+      return: 0
+    if: this.runtime.attach_systems(this.systems, this.components) == 0
+      return: 0
+    if: this.systems.register(new MovementSystem()) == 0
+      return: 0
+    if: this.scenes.add_scene("overworld") == 0
+      return: 0
+    set this.player_id: this.scenes.spawn("player")
+    if: this.player_id == 0
+      return: 0
+    if: this.components.set_transform(this.player_id, 0.0, 0.0, 0.0) == 0
+      return: 0
+    set this.started: 1
+    return: 1
+
+  fn player():
+    return: this.player_id
+
+  fn set_player_velocity(x, y, z):
+    if: this.started == 0
+      return: 0
+    return: this.components.set_velocity(this.player_id, x, y, z)
+
+  fn player_position():
+    if: this.started == 0
+      return: []
+    set transform: this.components.get("transform", this.player_id)
+    return: transform.position()
+
+  fn tick(elapsed_ms):
+    if: this.started == 0
+      return: 0 - 1
+    return: this.runtime.update(elapsed_ms)
+
+  fn tick_count():
+    if: this.started == 0
+      return: 0
+    return: this.runtime.tick_count()
+
+  fn block_catalog():
+    return: this.blocks
+
+  fn scene_name():
+    if: this.started == 0
+      return: ""
+    return: this.scenes.active_name()
+
+  fn stop():
+    if: this.started == 0
+      return: 0
+    set this.started: 0
+    return: this.app.stop()

@@ -1,0 +1,64 @@
+# OWCraft's gameplay-specific block IDs. Engine entities are NOT used per block.
+# Chunks and meshing will be implemented in a follow-up PR.
+class BlockCatalog:
+  field labels
+  field solids
+  field size_value
+
+  fn new():
+    set this.labels: array(64, "")
+    set this.solids: array(64, 0)
+    set this.size_value: 0
+    call: this.register("air", 0)
+    call: this.register("grass", 1)
+    call: this.register("dirt", 1)
+    call: this.register("stone", 1)
+    call: this.register("glass", 1)
+    call: this.register("water", 0)
+
+  fn count():
+    return: this.size_value
+
+  fn id_of(name):
+    set i int: 0
+    while: i < this.size_value
+      if: this.labels[i] == name
+        return: i
+      set i: i + 1
+    return: 0 - 1
+
+  # -1 on failure, otherwise new stable block ID. Air permanently has ID 0.
+  fn register(name, solid):
+    if: name == ""
+      return: 0 - 1
+    if: solid != 0
+      if: solid != 1
+        return: 0 - 1
+    if: this.id_of(name) >= 0
+      return: 0 - 1
+    if: this.size_value >= len(this.labels)
+      return: 0 - 1
+    set id int: this.size_value
+    set labels: this.labels
+    set flags: this.solids
+    set labels[id]: name
+    set flags[id]: solid
+    set this.size_value: this.size_value + 1
+    return: id
+
+  fn valid_id(id):
+    if: id < 0
+      return: 0
+    if: id >= this.size_value
+      return: 0
+    return: 1
+
+  fn name_of(id):
+    if: this.valid_id(id) == 0
+      return: ""
+    return: this.labels[id]
+
+  fn is_solid(id):
+    if: this.valid_id(id) == 0
+      return: 0
+    return: this.solids[id]

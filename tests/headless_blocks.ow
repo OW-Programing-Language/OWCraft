@@ -1,0 +1,23 @@
+import "../src/craft/blocks/BlockCatalog.ow"
+
+main:
+  set blocks: new BlockCatalog()
+  call: assert(blocks.count() == 6, "six baseline materials")
+  call: assert(blocks.id_of("air") == 0)
+  call: assert(blocks.id_of("grass") == 1)
+  call: assert(blocks.id_of("dirt") == 2)
+  call: assert(blocks.id_of("stone") == 3)
+  call: assert(blocks.is_solid(0) == 0, "air is not solid")
+  call: assert(blocks.is_solid(1) == 1)
+  call: assert(blocks.is_solid(5) == 0, "water is non-solid")
+  call: assert(blocks.name_of(3) == "stone")
+  call: assert(blocks.register("copper", 1) == 6)
+  call: assert(blocks.name_of(6) == "copper")
+  call: assert(blocks.register("copper", 0) == 0 - 1, "block IDs must be unique")
+  call: assert(blocks.register("", 1) == 0 - 1)
+  call: assert(blocks.register("invalid", 2) == 0 - 1)
+  call: assert(blocks.id_of("unknown") == 0 - 1)
+  call: assert(blocks.valid_id(0 - 1) == 0)
+  call: assert(blocks.valid_id(100) == 0)
+  call: assert(blocks.name_of(500) == "")
+  print: "PASS: OWCraft typed block registry and stable block IDs"
