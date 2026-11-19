@@ -1,0 +1,42 @@
+# Signed regions, preflight failures, adjacent columns and capacity.
+import "../src/craft/blocks/BlockCatalog.ow"
+import "../src/craft/world/WorldStore.ow"
+import "../src/craft/terrain/TerrainGenerator.ow"
+
+main:
+  set catalog: new BlockCatalog()
+  set world: new WorldStore(catalog)
+  set terrain: new TerrainGenerator(world, catalog, 43)
+  call: assert(terrain.generate_region(0 - 1, 0, 2, 1) == 1, "two columns across zero")
+  call: assert(world.chunk_count() == 4)
+  call: assert(world.get_block(0 - 1, terrain.height_at(0 - 1, 0), 0) == 1)
+  call: assert(world.get_block(0, terrain.height_at(0, 0), 0) == 1)
+  call: assert(world.get_block(0 - 16, 0, 0) == 3)
+  call: assert(world.get_block(16, 25, 0) == 0 - 1, "unloaded chunk is not air")
+  call: assert(terrain.generate_region(0 - 1, 0, 2, 1) == 0, "existing columns rejected")
+  call: assert(world.chunk_count() == 4, "preflight does not create partial region")
+  call: assert(terrain.generate_region(0, 0, 0, 1) == 0)
+  call: assert(terrain.generate_region(0, 0, 4, 1) == 0)
+  call: assert(terrain.generate_region(0, 0, 1, 4) == 0)
+  call: assert(terrain.generate_region(65535, 0, 2, 1) == 0)
+  call: assert(terrain.generate_region(0 - 65537, 0, 1, 1) == 0)
+  call: assert(world.chunk_count() == 4)
+  call: assert(terrain.generate_chunk(0, 0, 0) == 0)
+  call: assert(terrain.generate_chunk(0, 1, 0) == 0)
+
+  # A column needs TWO free slots, so reject with 31/32 in use.
+  set limited: new WorldStore(catalog)
+  set region: new TerrainGenerator(limited, catalog, 17)
+  set i int: 0
+  while: i < 31
+    call: assert(limited.create_chunk(i, 0, 40) == 1)
+    set i: i + 1
+  call: assert(limited.chunk_count() == 31)
+  call: assert(region.generate_column(40, 40) == 0)
+  call: assert(limited.chunk_index(40, 0, 40) == 0 - 1)
+  call: assert(limited.chunk_count() == 31)
+  call: assert(limited.remove_chunk(0, 0, 40) == 1)
+  call: assert(region.generate_column(40, 40) == 1, "two slots now free")
+  call: assert(limited.chunk_count() == 32)
+  call: assert(limited.get_block(640, 0, 640) == 3)
+  print: "PASS: region preflight, negative coordinates and safe chunk capacity"

@@ -1,0 +1,50 @@
+# Seeding, signed coordinates, interpolation and block materials.
+import "../src/craft/blocks/BlockCatalog.ow"
+import "../src/craft/world/WorldStore.ow"
+import "../src/craft/terrain/TerrainGenerator.ow"
+
+main:
+  set catalog: new BlockCatalog()
+  set world_a: new WorldStore(catalog)
+  set world_b: new WorldStore(catalog)
+  set world_c: new WorldStore(catalog)
+  set a: new TerrainGenerator(world_a, catalog, 42)
+  set b: new TerrainGenerator(world_b, catalog, 42)
+  set c: new TerrainGenerator(world_c, catalog, 43)
+  call: assert(a.seed() == 42)
+  call: assert(a.height_at(0, 0) == 12, "stable reference coordinate")
+  call: assert(a.height_at(15, 15) == 15)
+  call: assert(a.height_at(0 - 17, 0 - 17) == 15)
+  call: assert(c.height_at(0, 0) == 5, "different seed changes height")
+  call: assert(a.height_at(0, 0) == b.height_at(0, 0))
+  call: assert(a.height_at(0 - 17, 15) == b.height_at(0 - 17, 15))
+  call: assert(a.height_at(1048576, 0) == 0 - 1)
+  call: assert(a.height_at(0 - 1048577, 0) == 0 - 1)
+  call: assert(a.height_at(0, 0 - 1048577) == 0 - 1)
+  call: assert(a.floor_div8(0 - 1) == 0 - 1)
+  call: assert(a.floor_div8(0 - 8) == 0 - 1)
+  call: assert(a.floor_div8(0 - 9) == 0 - 2)
+  call: assert(a.positive_mod(0 - 1, 997) == 996)
+  call: assert(a.positive_mod(997, 997) == 0)
+
+  set z int: 0 - 17
+  while: z <= 16
+    set x int: 0 - 17
+    while: x <= 16
+      set h int: a.height_at(x, z)
+      call: assert(h >= 5)
+      call: assert(h <= 19)
+      call: assert(h == b.height_at(x, z), "same seed is reproducible")
+      call: assert(a.material_at(x, h, z) == catalog.id_of("grass"))
+      call: assert(a.material_at(x, h - 1, z) == catalog.id_of("dirt"))
+      call: assert(a.material_at(x, h - 4, z) == catalog.id_of("stone"))
+      call: assert(a.material_at(x, 31, z) == 0)
+      set x: x + 7
+    set z: z + 7
+
+  # Seed changes are safe only before a chunk is resident.
+  call: assert(a.set_seed(1000001) == 0)
+  call: assert(a.set_seed(0 - 1) == 0)
+  call: assert(a.set_seed(43) == 1)
+  call: assert(a.height_at(0, 0) == c.height_at(0, 0))
+  print: "PASS: seeded, bilinear and signed terrain heights"
