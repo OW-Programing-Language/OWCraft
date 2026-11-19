@@ -58,7 +58,7 @@ class GpuTerrainScene:
     set components: new EngineComponentsModule(entities.store())
     set blocks: new CraftBlocksModule()
     set world: new CraftWorldModule(blocks.store())
-    set terrain: new CraftTerrainModule(world.store(), blocks.store(), 42)
+    set terrain: new CraftTerrainModule(world.store(), blocks.store(), 43)
     set drawing GRAPHICS_MULTI_SCENE: MakeMultiScene(Graphics.OpenGLRenderer)
     set render: new EngineRenderModule(scenes.store(), components.store(), Graphics.Transforms, drawing, Graphics.OpenGLShader)
     set this.app: new App()

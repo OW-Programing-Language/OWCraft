@@ -3,7 +3,7 @@
 ## Architecture and separation
 
 ```text
-OWCraft WorldStore (16³ block IDs, seed=42)
+OWCraft WorldStore (16³ block IDs, seed=43)
     -> ChunkMesher (six-face neighbor checks, cross-chunk queries)
     -> ChunkMesh (XYZ, UV, normals, indexed triangles)
     -> OW Graphics GRAPHICS_MESH.create_lit_indexed()
