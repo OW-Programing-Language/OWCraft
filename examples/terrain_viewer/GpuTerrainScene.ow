@@ -102,31 +102,33 @@ class GpuTerrainScene:
     set this.render_world: this.app.service("render_world")
     set this.chunks: this.app.service("craft.world")
     set this.terrain: this.app.service("craft.terrain")
-    call: assert(this.scene.attach_components(this.components) == 1)
-    call: assert(this.scene.add_scene("overworld") == 1)
+    call: assert(this.scene.attach_components(this.components) == 1, "GPU scene assertion 105")
+    call: assert(this.scene.add_scene("overworld") == 1, "GPU scene assertion 106")
     call: assert(this.terrain.generate_column(0, 0) == 1, "seeded terrain in two chunks")
     call: assert(this.window.open(320, 240, "OWCraft / Terrain Viewer") == 1, "GLFW OpenGL 3.3")
-    call: assert(this.renderer.depth_test(1) == 1)
+    call: assert(this.renderer.depth_test(1) == 1, "GPU scene assertion 109")
 
     # 8-pixel RGB palette, indexed by block ID using UV = (id + 0.5) / 8.
     # Shader uses nearest texture filtering, no external asset required.
     set this.palette: this.textures.create_rgba8(8, 1, [0, 0, 0, 255, 95, 200, 72, 255, 146, 100, 65, 255, 132, 143, 152, 255, 175, 215, 225, 255, 55, 140, 225, 255, 210, 175, 110, 255, 245, 245, 245, 255])
-    call: assert(this.palette > 0)
+    call: assert(this.palette > 0, "GPU scene assertion 114")
     set vertex: "#version 330 core\nlayout(location=0) in vec3 pos;\nlayout(location=1) in vec2 uv;\nlayout(location=2) in vec3 normal;\nout vec2 vUv;\nout vec3 vNormal;\nuniform mat4 uModel;\nuniform mat4 uView;\nuniform mat4 uProjection;\nvoid main(){vUv=uv;vNormal=normal;gl_Position=uProjection*uView*uModel*vec4(pos,1.0);}"
     set fragment: "#version 330 core\nin vec2 vUv;\nin vec3 vNormal;\nout vec4 pixel;\nuniform sampler2D uTexture;\nvoid main(){float diffuse=max(dot(normalize(vNormal),normalize(vec3(0.4,1.0,0.7))),0.0);float brightness=0.50+0.50*diffuse;pixel=vec4(texture(uTexture,vUv).rgb*brightness,1.0);}"
     set this.program: this.shader.create(vertex, fragment)
     call: assert(this.program > 0, "GLSL palette shaders")
-    call: assert(this.shader.bind(this.program) == 1)
+    call: assert(this.shader.bind(this.program) == 1, "GPU scene assertion 119")
     call: assert(this.shader.set_int(this.program, "uTexture", 0) == 1)
-    call: assert(this.textures.bind(this.palette, 0) == 1)
+    call: assert(this.textures.bind(this.palette, 0) == 1, "GPU scene assertion 121")
     set entities: this.chunk_entities
     set entities[0]: this.scene.spawn("terrain-chunk-y0")
     set entities[1]: this.scene.spawn("terrain-chunk-y1")
-    call: assert(entities[0] > 0)
-    call: assert(entities[1] > 0)
-    call: assert(this.components.set_transform(entities[0], 0.0, 0.0, 0.0) == 1)
-    call: assert(this.components.set_transform(entities[1], 0.0, 0.0, 0.0) == 1)
+    call: assert(entities[0] > 0, "GPU scene assertion 125")
+    call: assert(entities[1] > 0, "GPU scene assertion 126")
+    call: assert(this.components.set_transform(entities[0], 0.0, 0.0, 0.0) == 1, "GPU scene assertion 127")
+    call: assert(this.components.set_transform(entities[1], 0.0, 0.0, 0.0) == 1, "GPU scene assertion 128")
+    print: "GPU scene: start meshing"
     call: assert(this.refresh_meshes() == 1, "initial GPU meshes")
+    print: "GPU scene: initial meshes ready"
     return: 1
 
   # Rebuild both chunk meshes if either chunk's revision changes, so the
