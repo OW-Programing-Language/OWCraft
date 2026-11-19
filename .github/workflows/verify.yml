@@ -54,3 +54,15 @@ jobs:
         run: |
           java -jar ../ow-lang/target/OwIDE.jar check tests/headless_graphics.ow
           java -jar ../ow-lang/target/OwIDE.jar run tests/headless_graphics.ow
+
+      - name: Verify 16x16x16 chunk storage, signed coordinates and flOW world integration
+        working-directory: owcraft
+        run: |
+          java -jar ../ow-lang/target/OwIDE.jar check tests/headless_chunks.ow
+          java -jar ../ow-lang/target/OwIDE.jar run tests/headless_chunks.ow
+          java -jar ../ow-lang/target/OwIDE.jar check tests/headless_world.ow
+          java -jar ../ow-lang/target/OwIDE.jar run tests/headless_world.ow
+          java -jar ../ow-lang/target/OwIDE.jar check tests/headless_game_world.ow
+          java -jar ../ow-lang/target/OwIDE.jar run tests/headless_game_world.ow
+          java -jar ../ow-lang/target/OwIDE.jar check tests/headless_capacity.ow
+          java -jar ../ow-lang/target/OwIDE.jar run tests/headless_capacity.ow

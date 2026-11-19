@@ -1,0 +1,33 @@
+import "../world/WorldStore.ow"
+
+# Game-specific voxel data; independent of rendering and generic ECS.
+class CraftWorldModule(Module):
+  field store_value
+
+  fn new(catalog):
+    set this.store_value: new WorldStore(catalog)
+
+  fn name():
+    return: "craft.world"
+
+  fn requires():
+    return: ["craft.blocks"]
+
+  fn register(app):
+    call: app.require_as("craft.world", "craft.blocks", "CRAFT_BLOCKS")
+    return: app.provide_as("craft.world", "CRAFT_WORLD", this.store_value)
+
+  fn start(app):
+    return: 0
+
+  fn stop(app):
+    return: 0
+
+  fn reload(app):
+    return: 0
+
+  fn on_event(type, payload):
+    return: 0
+
+  fn store():
+    return: this.store_value

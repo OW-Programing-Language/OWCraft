@@ -1,0 +1,71 @@
+# Fixed 16x16x16 palette-ID voxel chunk. No ECS entity per voxel.
+# Storage order: y * 256 + z * 16 + x (4096 integer IDs per chunk).
+class Chunk:
+  field cx
+  field cy
+  field cz
+  field blocks
+  field non_air
+  field revision
+
+  fn new(chunk_x int, chunk_y int, chunk_z int):
+    set this.cx: chunk_x
+    set this.cy: chunk_y
+    set this.cz: chunk_z
+    set this.blocks: array(4096, 0)
+    set this.non_air: 0
+    set this.revision: 0
+
+  fn local_index(x int, y int, z int):
+    if: x < 0
+      return: 0 - 1
+    if: x >= 16
+      return: 0 - 1
+    if: y < 0
+      return: 0 - 1
+    if: y >= 16
+      return: 0 - 1
+    if: z < 0
+      return: 0 - 1
+    if: z >= 16
+      return: 0 - 1
+    return: y * 256 + z * 16 + x
+
+  # -1 signals invalid local coordinates; 0 represents air.
+  fn get_block(x int, y int, z int):
+    set idx int: this.local_index(x, y, z)
+    if: idx < 0
+      return: 0 - 1
+    return: this.blocks[idx]
+
+  # Only 0..63 block IDs fit the current OWCraft catalog (64 entries).
+  # Returns 1 for a valid request, including a no-op identical write.
+  fn set_block(x int, y int, z int, block_id int):
+    set idx int: this.local_index(x, y, z)
+    if: idx < 0
+      return: 0
+    if: block_id < 0
+      return: 0
+    if: block_id >= 64
+      return: 0
+    set previous int: this.blocks[idx]
+    if: previous == block_id
+      return: 1
+    set voxels: this.blocks
+    set voxels[idx]: block_id
+    if: previous == 0
+      set this.non_air: this.non_air + 1
+    if: block_id == 0
+      set this.non_air: this.non_air - 1
+    set this.revision: this.revision + 1
+    return: 1
+
+  fn occupied_count():
+    # Non-air block count; water counts, regardless of collision solidity.
+    return: this.non_air
+
+  fn version():
+    return: this.revision
+
+  fn coordinates():
+    return: [this.cx, this.cy, this.cz]
