@@ -84,3 +84,45 @@ jobs:
           java -jar ../ow-lang/target/OwIDE.jar run tests/headless_terrain_game.ow
           java -jar ../ow-lang/target/OwIDE.jar check examples/terrain_demo/main.ow
           java -jar ../ow-lang/target/OwIDE.jar run examples/terrain_demo/main.ow
+
+      - name: Verify hidden-face meshing and cross-chunk geometry
+        working-directory: owcraft
+        run: |
+          java -jar ../ow-lang/target/OwIDE.jar check tests/headless_mesh_faces.ow
+          java -jar ../ow-lang/target/OwIDE.jar run tests/headless_mesh_faces.ow
+          java -jar ../ow-lang/target/OwIDE.jar check tests/headless_mesh_neighbors.ow
+          java -jar ../ow-lang/target/OwIDE.jar run tests/headless_mesh_neighbors.ow
+          java -jar ../ow-lang/target/OwIDE.jar check tests/headless_mesh_terrain.ow
+          java -jar ../ow-lang/target/OwIDE.jar run tests/headless_mesh_terrain.ow
+
+      - name: Check native OpenGL terrain viewer OW code
+        working-directory: owcraft
+        run: |
+          java -jar ../ow-lang/target/OwIDE.jar check examples/terrain_viewer/main.ow
+          java -jar ../ow-lang/target/OwIDE.jar check examples/terrain_viewer/smoke.ow
+
+      - name: Build pinned OW Graphics LWJGL native extension
+        run: |
+          git clone --quiet --no-checkout https://github.com/OW-Programing-Language/OW-Graphics.git ow-graphics
+          git -C ow-graphics checkout --quiet 4f00a5b4da076b3062269c9861878fcb34b590e8
+          mvn -B -q -f ow-graphics/native-bridge/pom.xml package dependency:copy-dependencies -DoutputDirectory=target/lib
+
+      - name: Install Mesa/Xvfb software OpenGL
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xvfb libgl1-mesa-dri libgl1 libxcursor1 libxi6 libxrandr2 libxinerama1
+
+      - name: Compile test-only framebuffer probe
+        run: |
+          mkdir -p owcraft/target/probe-classes/META-INF/services
+          javac -cp "ow-lang/target/OwIDE.jar:ow-graphics/native-bridge/target/classes:ow-graphics/native-bridge/target/lib/*" \
+            -d owcraft/target/probe-classes owcraft/tests/gpu/FramebufferProbe.java
+          cp owcraft/tests/gpu/META-INF/services/dev.oreo.RuntimeExtension \
+            owcraft/target/probe-classes/META-INF/services/dev.oreo.RuntimeExtension
+
+      - name: Render real terrain and sample OpenGL framebuffer pixels
+        working-directory: owcraft
+        run: |
+          xvfb-run -a -s "-screen 0 800x600x24" env LIBGL_ALWAYS_SOFTWARE=1 \
+            java -cp "../ow-lang/target/OwIDE.jar:../ow-graphics/native-bridge/target/classes:../ow-graphics/native-bridge/target/lib/*:target/probe-classes" \
+            dev.oreo.Main run examples/terrain_viewer/smoke.ow

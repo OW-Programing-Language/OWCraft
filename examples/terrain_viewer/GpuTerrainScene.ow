@@ -110,16 +110,7 @@ class GpuTerrainScene:
 
     # 8-pixel RGB palette, indexed by block ID using UV = (id + 0.5) / 8.
     # Shader uses nearest texture filtering, no external asset required.
-    set this.palette: this.textures.create_rgba8(8, 1, [
-      0, 0, 0, 255,
-      95, 200, 72, 255,
-      146, 100, 65, 255,
-      132, 143, 152, 255,
-      175, 215, 225, 255,
-      55, 140, 225, 255,
-      210, 175, 110, 255,
-      245, 245, 245, 255
-    ])
+    set this.palette: this.textures.create_rgba8(8, 1, [0, 0, 0, 255, 95, 200, 72, 255, 146, 100, 65, 255, 132, 143, 152, 255, 175, 215, 225, 255, 55, 140, 225, 255, 210, 175, 110, 255, 245, 245, 245, 255])
     call: assert(this.palette > 0)
     set vertex: "#version 330 core\nlayout(location=0) in vec3 pos;\nlayout(location=1) in vec2 uv;\nlayout(location=2) in vec3 normal;\nout vec2 vUv;\nout vec3 vNormal;\nuniform mat4 uModel;\nuniform mat4 uView;\nuniform mat4 uProjection;\nvoid main(){vUv=uv;vNormal=normal;gl_Position=uProjection*uView*uModel*vec4(pos,1.0);}"
     set fragment: "#version 330 core\nin vec2 vUv;\nin vec3 vNormal;\nout vec4 pixel;\nuniform sampler2D uTexture;\nvoid main(){float diffuse=max(dot(normalize(vNormal),normalize(vec3(0.4,1.0,0.7))),0.0);float brightness=0.50+0.50*diffuse;pixel=vec4(texture(uTexture,vUv).rgb*brightness,1.0);}"
