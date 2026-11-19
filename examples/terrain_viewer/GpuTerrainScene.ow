@@ -1,0 +1,247 @@
+# Native OW + flOW + OW Engine RenderWorld + OW Graphics OpenGL terrain.
+# One generated 16x16 column (two 16^3 chunks); one GPU mesh per chunk.
+# Each block is NOT an ECS entity: only chunk meshes are represented in ECS.
+import "@flow/src/App.ow"
+import "@graphics/src/graphics/window/api/WindowApi.ow"
+import "@graphics/src/graphics/window/infra/GlfwWindow.ow"
+import "@graphics/src/graphics/input/api/InputApi.ow"
+import "@graphics/src/graphics/input/infra/GlfwInput.ow"
+import "@graphics/src/graphics/renderer/api/RendererApi.ow"
+import "@graphics/src/graphics/renderer/opengl/OpenGLRenderer.ow"
+import "@graphics/src/graphics/shader/api/ShaderApi.ow"
+import "@graphics/src/graphics/shader/opengl/OpenGLShader.ow"
+import "@graphics/src/graphics/mesh/api/MeshApi.ow"
+import "@graphics/src/graphics/mesh/opengl/OpenGLMesh.ow"
+import "@graphics/src/graphics/texture/api/TextureApi.ow"
+import "@graphics/src/graphics/texture/opengl/OpenGLTexture.ow"
+import "@graphics/src/graphics/math/api/TransformApi.ow"
+import "@graphics/src/graphics/math/infra/Transforms.ow"
+import "@graphics/src/graphics/camera/api/CameraApi.ow"
+import "@graphics/src/graphics/camera/infra/Camera.ow"
+import "@graphics/src/graphics/scene/api/MultiSceneApi.ow"
+import "@graphics/src/graphics/scene/infra/MakeMultiScene.ow"
+import "@engine/src/engine/modules/EngineEntitiesModule.ow"
+import "@engine/src/engine/modules/EngineScenesModule.ow"
+import "@engine/src/engine/modules/EngineComponentsModule.ow"
+import "@engine/src/engine/modules/EngineRenderModule.ow"
+import "../../src/craft/modules/CraftBlocksModule.ow"
+import "../../src/craft/modules/CraftWorldModule.ow"
+import "../../src/craft/modules/CraftTerrainModule.ow"
+import "../../src/craft/render/ChunkMesher.ow"
+
+class GpuTerrainScene:
+  field app
+  field window
+  field input
+  field renderer
+  field shader
+  field meshes
+  field textures
+  field camera
+  field scene
+  field components
+  field render_world
+  field chunks
+  field terrain
+  field mesher
+  field program
+  field palette
+  field mesh_handles
+  field mesh_revisions
+  field chunk_entities
+  field camera_x
+  field camera_z
+
+  fn new():
+    set entities: new EngineEntitiesModule()
+    set scenes: new EngineScenesModule(entities.store())
+    set components: new EngineComponentsModule(entities.store())
+    set blocks: new CraftBlocksModule()
+    set world: new CraftWorldModule(blocks.store())
+    set terrain: new CraftTerrainModule(world.store(), blocks.store(), 43)
+    set drawing GRAPHICS_MULTI_SCENE: MakeMultiScene(Graphics.OpenGLRenderer)
+    set render: new EngineRenderModule(scenes.store(), components.store(), Graphics.Transforms, drawing, Graphics.OpenGLShader)
+    set this.app: new App()
+    call: this.app.use(render)
+    call: this.app.use(terrain)
+    call: this.app.use(world)
+    call: this.app.use(blocks)
+    call: this.app.use_native_as(drawing, "GRAPHICS_MULTI_SCENE")
+    call: this.app.use_native_as(Graphics.Camera, "GRAPHICS_CAMERA")
+    call: this.app.use_native_as(Graphics.Transforms, "GRAPHICS_TRANSFORM")
+    call: this.app.use_native_as(Graphics.OpenGLTexture, "GRAPHICS_TEXTURE")
+    call: this.app.use_native_as(Graphics.OpenGLMesh, "GRAPHICS_MESH")
+    call: this.app.use_native_as(Graphics.OpenGLShader, "GRAPHICS_SHADER")
+    call: this.app.use_native_as(Graphics.GlfwInput, "GRAPHICS_INPUT")
+    call: this.app.use_native_as(Graphics.OpenGLRenderer, "GRAPHICS_RENDERER")
+    call: this.app.use_native_as(Graphics.GlfwWindow, "GRAPHICS_WINDOW")
+    call: this.app.use(components)
+    call: this.app.use(scenes)
+    call: this.app.use(entities)
+    set this.mesher: new ChunkMesher(world.store(), blocks.store())
+    set this.program: 0
+    set this.palette: 0
+    set this.mesh_handles: array(2, 0)
+    set this.mesh_revisions: array(2, 0 - 1)
+    set this.chunk_entities: array(2, 0)
+    set this.camera_x: 0.0
+    set this.camera_z: 0.0
+
+  fn start():
+    if: this.app.boot() == 0
+      return: 0
+    set this.window: this.app.service("window")
+    set this.input: this.app.service("input")
+    set this.renderer: this.app.service("renderer")
+    set this.shader: this.app.service("shader")
+    set this.meshes: this.app.service("mesh")
+    set this.textures: this.app.service("texture")
+    set this.camera: this.app.service("camera")
+    set this.scene: this.app.service("scenes")
+    set this.components: this.app.service("components")
+    set this.render_world: this.app.service("render_world")
+    set this.chunks: this.app.service("craft.world")
+    set this.terrain: this.app.service("craft.terrain")
+    call: assert(this.scene.attach_components(this.components) == 1, "GPU scene assertion 105")
+    call: assert(this.scene.add_scene("overworld") == 1, "GPU scene assertion 106")
+    call: assert(this.terrain.generate_column(0, 0) == 1, "seeded terrain in two chunks")
+    call: assert(this.window.open(320, 240, "OWCraft / Terrain Viewer") == 1, "GLFW OpenGL 3.3")
+    call: assert(this.renderer.depth_test(1) == 1, "GPU scene assertion 109")
+
+    # 8-pixel RGB palette, indexed by block ID using UV = (id + 0.5) / 8.
+    # Shader uses nearest texture filtering, no external asset required.
+    set this.palette: this.textures.create_rgba8(8, 1, [0, 0, 0, 255, 95, 200, 72, 255, 146, 100, 65, 255, 132, 143, 152, 255, 175, 215, 225, 255, 55, 140, 225, 255, 210, 175, 110, 255, 245, 245, 245, 255])
+    call: assert(this.palette > 0, "GPU scene assertion 114")
+    set vertex: "#version 330 core\nlayout(location=0) in vec3 pos;\nlayout(location=1) in vec2 uv;\nlayout(location=2) in vec3 normal;\nout vec2 vUv;\nout vec3 vNormal;\nuniform mat4 uModel;\nuniform mat4 uView;\nuniform mat4 uProjection;\nvoid main(){vUv=uv;vNormal=normal;gl_Position=uProjection*uView*uModel*vec4(pos,1.0);}"
+    set fragment: "#version 330 core\nin vec2 vUv;\nin vec3 vNormal;\nout vec4 pixel;\nuniform sampler2D uTexture;\nvoid main(){float diffuse=max(dot(normalize(vNormal),normalize(vec3(0.4,1.0,0.7))),0.0);float brightness=0.50+0.50*diffuse;pixel=vec4(texture(uTexture,vUv).rgb*brightness,1.0);}"
+    set this.program: this.shader.create(vertex, fragment)
+    call: assert(this.program > 0, "GLSL palette shaders")
+    call: assert(this.shader.bind(this.program) == 1, "GPU scene assertion 119")
+    call: assert(this.shader.set_int(this.program, "uTexture", 0) == 1)
+    call: assert(this.textures.bind(this.palette, 0) == 1, "GPU scene assertion 121")
+    set entities: this.chunk_entities
+    set entities[0]: this.scene.spawn("terrain-chunk-y0")
+    set entities[1]: this.scene.spawn("terrain-chunk-y1")
+    call: assert(entities[0] > 0, "GPU scene assertion 125")
+    call: assert(entities[1] > 0, "GPU scene assertion 126")
+    call: assert(this.components.set_transform(entities[0], 0.0, 0.0, 0.0) == 1, "GPU scene assertion 127")
+    call: assert(this.components.set_transform(entities[1], 0.0, 0.0, 0.0) == 1, "GPU scene assertion 128")
+    print: "GPU scene: start meshing"
+    call: assert(this.refresh_meshes() == 1, "initial GPU meshes")
+    print: "GPU scene: initial meshes ready"
+    return: 1
+
+  # Rebuild both chunk meshes if either chunk's revision changes, so the
+  # shared Y=16 boundary is always re-culled after placement/breaking.
+  # New meshes upload before old handles are retired.
+  fn refresh_meshes():
+    set lower: this.chunks.chunk_at(0, 0, 0)
+    set upper: this.chunks.chunk_at(0, 1, 0)
+    if: lower == 0
+      return: 0 - 1
+    if: upper == 0
+      return: 0 - 1
+    set versions: this.mesh_revisions
+    if: versions[0] == lower.version()
+      if: versions[1] == upper.version()
+        return: 0
+    set i int: 0
+    while: i < 2
+      set built: this.mesher.build(0, i, 0)
+      if: built == 0
+        return: 0 - 1
+      set next_handle int: 0
+      if: built.face_total() > 0
+        set next_handle: this.meshes.create_lit_indexed(built.positions, built.uvs, built.normals, built.indices)
+        if: next_handle < 1
+          return: 0 - 1
+        if: this.render_world.set_mesh(this.chunk_entities[i], next_handle) == 0
+          call: this.meshes.destroy(next_handle)
+          return: 0 - 1
+      set previous int: this.mesh_handles[i]
+      if: next_handle == 0
+        if: previous > 0
+          call: this.render_world.clear_mesh(this.chunk_entities[i])
+      set handles: this.mesh_handles
+      set handles[i]: next_handle
+      if: previous > 0
+        call: this.meshes.destroy(previous)
+      set i: i + 1
+    set versions[0]: lower.version()
+    set versions[1]: upper.version()
+    return: 1
+
+  fn render():
+    set refreshed int: this.refresh_meshes()
+    if: refreshed < 0
+      return: 0 - 1
+    set view: this.camera.look_at(8.0 + this.camera_x, 20.0, 33.0 + this.camera_z, 8.0 + this.camera_x, 6.0, 8.0 + this.camera_z, 0.0, 1.0, 0.0)
+    set projection: this.camera.perspective(1.0471975512, 1.33333333333333, 0.1, 110.0)
+    if: this.shader.bind(this.program) == 0
+      return: 0 - 1
+    if: this.textures.bind(this.palette, 0) == 0
+      return: 0 - 1
+    return: this.render_world.render_frame(this.program, view, projection, 12, 18, 25)
+
+  fn update_controls():
+    if: this.input.key_down("ESCAPE") == 1
+      return: this.window.request_close()
+    if: this.input.key_down("W") == 1
+      set this.camera_z: this.camera_z - 0.10
+    if: this.input.key_down("S") == 1
+      set this.camera_z: this.camera_z + 0.10
+    if: this.input.key_down("A") == 1
+      set this.camera_x: this.camera_x - 0.10
+    if: this.input.key_down("D") == 1
+      set this.camera_x: this.camera_x + 0.10
+    if: this.camera_x > 12.0
+      set this.camera_x: 12.0
+    if: this.camera_x < 0.0 - 12.0
+      set this.camera_x: 0.0 - 12.0
+    if: this.camera_z > 12.0
+      set this.camera_z: 12.0
+    if: this.camera_z < 0.0 - 12.0
+      set this.camera_z: 0.0 - 12.0
+    return: 1
+
+  fn run_frame():
+    call: this.window.poll()
+    if: this.window.should_close() == 1
+      return: 0
+    call: this.update_controls()
+    if: this.window.should_close() == 1
+      return: 0
+    set drawn int: this.render()
+    if: drawn < 1
+      return: 0
+    return: this.window.present()
+
+  fn active():
+    return: 1 - this.window.should_close()
+
+  fn edit_block(x int, y int, z int, id int):
+    return: this.chunks.place_block(x, y, z, id)
+
+  fn block_at(x int, y int, z int):
+    return: this.chunks.get_block(x, y, z)
+
+  fn mesh_count():
+    return: this.render_world.last_draw_count()
+
+  fn stop():
+    set i int: 0
+    while: i < 2
+      set previous int: this.mesh_handles[i]
+      if: previous > 0
+        call: this.render_world.clear_mesh(this.chunk_entities[i])
+        call: this.meshes.destroy(previous)
+        set handles: this.mesh_handles
+        set handles[i]: 0
+      set i: i + 1
+    if: this.palette > 0
+      call: this.textures.destroy(this.palette)
+      set this.palette: 0
+    if: this.program > 0
+      call: this.shader.destroy(this.program)
+      set this.program: 0
+    return: this.app.stop()

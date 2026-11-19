@@ -4,14 +4,15 @@
 
 OWCraft is an early-stage **game project**, separate from [OW-Engine](https://github.com/OW-Programing-Language/OW-Engine). The engine remains a reusable general-purpose 2D/3D game framework; OWCraft implements voxel-specific gameplay on top of it.
 
-## Status — seeded terrain foundation
+## Status — first real voxel terrain renderer
 
-The current version is **headless**. It stores editable voxel chunks and can generate reproducible terrain, but does not render terrain yet.
+OWCraft now has a GPU-backed **3D terrain viewer** on top of the existing headless world/chunk simulation. The viewer requires the OW Graphics native bridge and a working OpenGL 3.3 desktop session.
 
 - Real OW game bootstrap using **flOW**, OW-Engine's ECS, named scenes, deterministic fixed-step runtime and movement system.
 - OWCraft-owned block catalog with stable block IDs: air, grass, dirt, stone, glass and water.
 - **Phase 2:** 16×16×16 flat voxel chunks, signed coordinate conversion, placement/destruction, bounded 32-chunk storage and per-chunk revision counters.
 - **Phase 3:** deterministic seeded 2D heightfield terrain, interpolated hills, grass/dirt/stone layers, lowland water, bounded region generation and safeguards for player edits.
+- **Phase 4:** indexed chunk meshes with six-direction hidden-face culling; same shared 8-color palette texture, two real OpenGL chunk draws, camera controls and framebuffer tests under Mesa/Xvfb.
 - Source dependencies managed by **SHA-pinned `dependencies.yml`**; no engine or graphics code copied into this repo.
 - Optional **headless OW-Graphics** integration test through OW-Engine's RenderWorld and camera contracts.
 - GitHub Actions builds and checks the code on Java 17.
@@ -49,6 +50,9 @@ ow run tests/headless_terrain_chunks.ow
 ow run tests/headless_terrain_region.ow
 ow run tests/headless_terrain_game.ow
 ow run examples/terrain_demo/main.ow
+ow run tests/headless_mesh_faces.ow
+ow run tests/headless_mesh_neighbors.ow
+ow run tests/headless_mesh_terrain.ow
 ```
 
 The headless tests need **no GPU, OpenGL or native bridge**. With a source-built compiler you can use `java -jar /path/to/ow-lang/target/OwIDE.jar` in place of `ow`.
@@ -65,6 +69,8 @@ src/
     world/Chunk.ow                # 4096 voxel slots per chunk
     world/WorldStore.ow           # chunk lookup, edits and eviction
     terrain/TerrainGenerator.ow    # seeded, interpolated terrain heightfields
+    render/ChunkMesh.ow            # OW Graphics-ready indexed mesh buffers
+    render/ChunkMesher.ow          # hidden-face culling across chunk boundaries
     modules/CraftTerrainModule.ow  # flOW service: craft.terrain
     modules/CraftWorldModule.ow   # flOW service: craft.world
     modules/CraftBlocksModule.ow  # flOW service "craft.blocks"
@@ -78,6 +84,7 @@ tests/
   headless_capacity.ow             # chunk count bound / eviction
   headless_terrain_*.ow            # seeded noise, layers, regions and game integration
 examples/terrain_demo/main.ow      # runnable, headless terrain demonstration
+examples/terrain_viewer/           # actual OW Engine / OpenGL terrain viewer
 .github/workflows/verify.yml       # CI
 ```
 
@@ -86,13 +93,13 @@ examples/terrain_demo/main.ow      # runnable, headless terrain demonstration
 1. **PR #1 — Foundation:** flOW, engine/graphics dependencies, initial world and player, block catalog, CI.
 2. **PR #2 — Voxels:** 16×16×16 chunk storage, signed coordinates, placement/removal and boundary tests.
 3. **PR #3 — Terrain:** deterministic seeded terrain and bounded region generation (streaming deferred).
-4. **PR #4 — Rendering:** visible-face meshing, chunk draw batching, terrain rendered via OW Graphics.
+4. **PR #4 — Rendering:** visible-face meshing, shared palette texture, per-chunk mesh draw calls via OW Graphics.
 5. **PR #5 — Gameplay:** block interaction, ray casting, inventory and survival mechanics.
 6. **Later:** robust saves, world streaming, performance, multiplayer, cross-platform packaging.
 
 Physics, collision and general-purpose input capabilities should be implemented in OW-Engine, not duplicated here. The roadmap is aspirational: performance and compiler constraints will be measured as features land.
 
-See [Chunk and World APIs](docs/WORLD-CHUNKS.md) and [Terrain generation](docs/TERRAIN.md) for coordinate conventions, limits and return codes.
+See [Chunk and World APIs](docs/WORLD-CHUNKS.md), [Terrain generation](docs/TERRAIN.md), and [the 3D terrain viewer](docs/RENDERING.md) for build commands, APIs and limitations.
 
 ## License
 

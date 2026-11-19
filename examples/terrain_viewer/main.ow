@@ -1,0 +1,11 @@
+# Actual windowed OWCraft terrain — full flOW + OW Engine ECS + Graphics.
+# WASD pans the camera, ESC closes. Use OpenGL native provider in JVM classpath.
+import "GpuTerrainScene.ow"
+
+main:
+  set game: new GpuTerrainScene()
+  call: assert(game.start() == 1)
+  print: "OWCraft terrain viewer: WASD moves the camera, ESC exits"
+  while: game.active() == 1
+    call: assert(game.run_frame() == 1)
+  call: assert(game.stop() == 1)

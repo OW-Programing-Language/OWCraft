@@ -1,0 +1,51 @@
+# GPU-free visible-face mesher tests with real OW chunk data.
+import "../src/craft/blocks/BlockCatalog.ow"
+import "../src/craft/world/WorldStore.ow"
+import "../src/craft/render/ChunkMesher.ow"
+
+main:
+  set catalog: new BlockCatalog()
+  set world: new WorldStore(catalog)
+  set mesher: new ChunkMesher(world, catalog)
+  call: assert(mesher.count_faces(0, 0, 0) == 0 - 1)
+  call: assert(mesher.build(0, 0, 0) == 0)
+  call: assert(world.create_chunk(0, 0, 0) == 1)
+  set empty: mesher.build(0, 0, 0)
+  call: assert(empty.empty() == 1)
+  call: assert(empty.face_total() == 0)
+  call: assert(len(empty.positions) == 0)
+
+  call: assert(world.place_block(0, 0, 0, 3) == 1)
+  set one: mesher.build(0, 0, 0)
+  call: assert(mesher.count_faces(0, 0, 0) == 6, "isolated stone emits 6 faces")
+  call: assert(one.face_total() == 6)
+  call: assert(one.vertex_total() == 24)
+  call: assert(len(one.positions) == 72)
+  call: assert(len(one.uvs) == 48)
+  call: assert(len(one.normals) == 72)
+  call: assert(len(one.indices) == 36)
+  call: assert(one.indices[0] == 0)
+  call: assert(one.indices[1] == 1)
+  call: assert(one.indices[2] == 2)
+  call: assert(one.indices[3] == 2)
+  call: assert(one.indices[4] == 3)
+  call: assert(one.indices[5] == 0)
+  call: assert(one.positions[0] == 1.0, "first +X face")
+  call: assert(one.normals[0] == 1.0)
+  call: assert(one.uvs[0] == 0.4375, "stone samples palette pixel 3")
+  call: assert(one.normals[12] == 0.0 - 1.0, "second face has -X normal")
+  call: assert(one.normals[25] == 1.0, "third face has +Y normal")
+
+  call: assert(world.place_block(1, 0, 0, 3) == 1)
+  set adjacent: mesher.build(0, 0, 0)
+  call: assert(adjacent.face_total() == 10, "two adjacent opaque blocks hide 2 internal faces")
+  call: assert(adjacent.vertex_total() == 40)
+  call: assert(len(adjacent.indices) == 60)
+  call: assert(world.break_block(1, 0, 0) == 1)
+  call: assert(mesher.count_faces(0, 0, 0) == 6, "exposed face returns after destruction")
+
+  # Opaque/glass interface: opaque side remains, hidden glass side culled.
+  call: assert(world.place_block(1, 0, 0, 4) == 1)
+  call: assert(mesher.count_faces(0, 0, 0) == 11)
+  call: assert(world.break_block(1, 0, 0) == 1)
+  print: "PASS: hidden-face culling, exact OW Graphics buffers and normals"
