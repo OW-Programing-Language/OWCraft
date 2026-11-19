@@ -1,0 +1,152 @@
+import "Chunk.ow"
+
+# Sparse bounded chunk registry: 32 chunks, each containing 4096 block IDs.
+class WorldStore:
+  field catalog
+  field chunks
+  field size_value
+
+  fn new(catalog):
+    set this.catalog: catalog
+    set this.chunks: array(32, 0)
+    set this.size_value: 0
+
+  fn chunk_count():
+    return: this.size_value
+
+  fn max_chunks():
+    return: len(this.chunks)
+
+  fn valid_world_coordinate(value int):
+    if: value < 0 - 1048576
+      return: 0
+    if: value >= 1048576
+      return: 0
+    return: 1
+
+  fn valid_chunk_coordinate(value int):
+    if: value < 0 - 65536
+      return: 0
+    if: value >= 65536
+      return: 0
+    return: 1
+
+  # OW int division truncates toward zero. Convert to floor-div for negatives.
+  fn chunk_coordinate(value int):
+    set result int: value / 16
+    if: value < 0
+      if: value != result * 16
+        set result: result - 1
+    return: result
+
+  fn local_coordinate(value int):
+    set chunk int: this.chunk_coordinate(value)
+    return: value - chunk * 16
+
+  fn chunk_index(cx int, cy int, cz int):
+    set i int: 0
+    while: i < this.size_value
+      set current: this.chunks[i]
+      if: current.cx == cx
+        if: current.cy == cy
+          if: current.cz == cz
+            return: i
+      set i: i + 1
+    return: 0 - 1
+
+  # Returns chunk instance, or 0 when missing.
+  fn chunk_at(cx int, cy int, cz int):
+    set idx int: this.chunk_index(cx, cy, cz)
+    if: idx < 0
+      return: 0
+    return: this.chunks[idx]
+
+  # 1 = newly created. 0 = duplicate, out of range or out of capacity.
+  fn create_chunk(cx int, cy int, cz int):
+    if: this.valid_chunk_coordinate(cx) == 0
+      return: 0
+    if: this.valid_chunk_coordinate(cy) == 0
+      return: 0
+    if: this.valid_chunk_coordinate(cz) == 0
+      return: 0
+    if: this.chunk_index(cx, cy, cz) >= 0
+      return: 0
+    if: this.size_value >= len(this.chunks)
+      return: 0
+    set storage: this.chunks
+    set storage[this.size_value]: new Chunk(cx, cy, cz)
+    set this.size_value: this.size_value + 1
+    return: 1
+
+  # Eviction does not persist data; a reloaded chunk starts empty.
+  fn remove_chunk(cx int, cy int, cz int):
+    set idx int: this.chunk_index(cx, cy, cz)
+    if: idx < 0
+      return: 0
+    set storage: this.chunks
+    set j int: idx
+    while: j < this.size_value - 1
+      set storage[j]: storage[j + 1]
+      set j: j + 1
+    set storage[this.size_value - 1]: 0
+    set this.size_value: this.size_value - 1
+    return: 1
+
+  # -1 = unloaded/invalid; 0 = loaded air; positive = material.
+  fn get_block(x int, y int, z int):
+    if: this.valid_world_coordinate(x) == 0
+      return: 0 - 1
+    if: this.valid_world_coordinate(y) == 0
+      return: 0 - 1
+    if: this.valid_world_coordinate(z) == 0
+      return: 0 - 1
+    set cx int: this.chunk_coordinate(x)
+    set cy int: this.chunk_coordinate(y)
+    set cz int: this.chunk_coordinate(z)
+    set idx int: this.chunk_index(cx, cy, cz)
+    if: idx < 0
+      return: 0 - 1
+    return: this.chunks[idx].get_block(this.local_coordinate(x), this.local_coordinate(y), this.local_coordinate(z))
+
+  # Places a catalog-valid non-air ID; missing chunks allocate lazily.
+  fn place_block(x int, y int, z int, block_id int):
+    if: block_id == 0
+      return: 0
+    if: this.catalog.valid_id(block_id) == 0
+      return: 0
+    if: this.valid_world_coordinate(x) == 0
+      return: 0
+    if: this.valid_world_coordinate(y) == 0
+      return: 0
+    if: this.valid_world_coordinate(z) == 0
+      return: 0
+    set cx int: this.chunk_coordinate(x)
+    set cy int: this.chunk_coordinate(y)
+    set cz int: this.chunk_coordinate(z)
+    set idx int: this.chunk_index(cx, cy, cz)
+    if: idx < 0
+      if: this.create_chunk(cx, cy, cz) == 0
+        return: 0
+      set idx: this.chunk_index(cx, cy, cz)
+    return: this.chunks[idx].set_block(this.local_coordinate(x), this.local_coordinate(y), this.local_coordinate(z), block_id)
+
+  # 1 = removed; 0 = air, invalid or unloaded; never allocates.
+  fn break_block(x int, y int, z int):
+    set old int: this.get_block(x, y, z)
+    if: old <= 0
+      return: 0
+    set cx int: this.chunk_coordinate(x)
+    set cy int: this.chunk_coordinate(y)
+    set cz int: this.chunk_coordinate(z)
+    set idx int: this.chunk_index(cx, cy, cz)
+    if: idx < 0
+      return: 0
+    return: this.chunks[idx].set_block(this.local_coordinate(x), this.local_coordinate(y), this.local_coordinate(z), 0)
+
+  fn occupied_blocks():
+    set total int: 0
+    set i int: 0
+    while: i < this.size_value
+      set total: total + this.chunks[i].occupied_count()
+      set i: i + 1
+    return: total
