@@ -26,5 +26,5 @@ main:
   # Verify correct rebuilt geometry; no ECS entity for each individual block.
   set rebuilt: mesher.build(0 - 1, 0, 0)
   call: assert(rebuilt.face_total() == 5)
-  call: assert(rebuilt.positions[0] == 0.0, "negative chunk face in world coordinates")
+  call: assert(rebuilt.positions[0] == 0.0 - 1.0, "culled +X face leaves -X world-coordinate face")
   print: "PASS: cross-chunk face culling and signed boundaries"
