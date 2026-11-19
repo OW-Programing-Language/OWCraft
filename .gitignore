@@ -1,0 +1,10 @@
+# OW resolved dependencies and generated output
+.ow/
+build/
+dist/
+target/
+*.class
+*.jar
+.idea/
+.vscode/
+.DS_Store

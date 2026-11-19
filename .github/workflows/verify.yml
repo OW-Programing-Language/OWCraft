@@ -1,0 +1,56 @@
+name: Verify OWCraft
+
+on:
+  push:
+    branches: [main, "feat/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  headless:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout OWCraft
+        uses: actions/checkout@v4
+        with:
+          path: owcraft
+      - name: Checkout OW compiler
+        uses: actions/checkout@v4
+        with:
+          repository: OW-Programing-Language/ow-lang
+          # Keep in sync with compatible OW Engine / Graphics test baseline.
+          ref: e249975a4f835e7ad5378cf7f3633e059d8396b4
+          path: ow-lang
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+          cache-dependency-path: ow-lang/pom.xml
+      - name: Build OW language runtime
+        run: mvn -B -q -f ow-lang/pom.xml -DskipTests install
+      - name: Resolve pinned flOW, OW Engine and OW Graphics
+        working-directory: owcraft
+        run: |
+          java -jar ../ow-lang/target/OwIDE.jar deps install
+          git diff --exit-code -- dependencies.lock.yml
+      - name: Check and run OWCraft game
+        working-directory: owcraft
+        run: |
+          java -jar ../ow-lang/target/OwIDE.jar check src/main.ow
+          java -jar ../ow-lang/target/OwIDE.jar run src/main.ow
+          java -jar ../ow-lang/target/OwIDE.jar check tests/headless_boot.ow
+          java -jar ../ow-lang/target/OwIDE.jar run tests/headless_boot.ow
+      - name: Check game block registry
+        working-directory: owcraft
+        run: |
+          java -jar ../ow-lang/target/OwIDE.jar check tests/headless_blocks.ow
+          java -jar ../ow-lang/target/OwIDE.jar run tests/headless_blocks.ow
+      - name: Check real Engine-Graphics-flOW headless integration
+        working-directory: owcraft
+        run: |
+          java -jar ../ow-lang/target/OwIDE.jar check tests/headless_graphics.ow
+          java -jar ../ow-lang/target/OwIDE.jar run tests/headless_graphics.ow

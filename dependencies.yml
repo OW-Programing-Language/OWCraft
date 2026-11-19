@@ -1,0 +1,18 @@
+# Source-level dependencies pinned to revisions verified with the OW interpreter.
+format: 1
+repositories:
+  - id: github
+    url: https://github.com
+dependencies:
+  - name: flow
+    repository: github
+    path: OW-Programing-Language/flOW---OW-Modular-Framework
+    version: 6d91239698e88994ac6057ea46a176fe79394acb
+  - name: graphics
+    repository: github
+    path: OW-Programing-Language/OW-Graphics
+    version: 4f00a5b4da076b3062269c9861878fcb34b590e8
+  - name: engine
+    repository: github
+    path: OW-Programing-Language/OW-Engine
+    version: 67b4ff2bbb6f30d53472649c2e3a05ef134b4724

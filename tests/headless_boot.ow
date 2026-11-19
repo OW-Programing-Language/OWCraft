@@ -1,0 +1,24 @@
+# Real OW Engine modules and flOW lifecycle (no graphics device needed).
+import "../src/craft/CraftGame.ow"
+
+main:
+  set game: new CraftGame()
+  call: assert(game.scene_name() == "", "not started")
+  call: assert(game.tick(16) == 0 - 1, "cannot update before boot")
+  call: assert(game.start() == 1, "flOW/Engine game boot")
+  call: assert(game.start() == 0, "cannot boot twice")
+  call: assert(game.scene_name() == "overworld")
+  call: assert(game.player() > 0, "engine player entity created")
+  set origin: game.player_position()
+  call: assert(len(origin) == 3)
+  call: assert(origin[0] == 0.0)
+  call: assert(game.set_player_velocity(125.0, 0.0, 0.0) == 1)
+  call: assert(game.tick(15) == 0)
+  call: assert(game.tick(1) == 1)
+  call: assert(game.tick(32) == 2)
+  set pos: game.player_position()
+  call: assert(pos[0] == 6.0, "3 simulation ticks / 125 units per second")
+  call: assert(game.tick_count() == 3)
+  call: assert(game.stop() == 1)
+  call: assert(game.stop() == 0, "cannot shut down twice")
+  print: "PASS: OW Engine ECS scene/movement and flOW game startup"
