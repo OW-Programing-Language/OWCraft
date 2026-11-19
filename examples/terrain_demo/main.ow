@@ -1,0 +1,16 @@
+# Headless OWCraft world generation example. No OpenGL required.
+import "../../src/craft/CraftGame.ow"
+
+main:
+  set game: new CraftGame()
+  call: assert(game.start() == 1)
+  call: assert(game.set_world_seed(42) == 1)
+  call: assert(game.generate_terrain_region(0 - 1, 0, 2, 1) == 1)
+  set world: game.world_store()
+  print: "OWCraft seed=" + game.terrain_generator().seed()
+  print: "Loaded chunks=" + world.chunk_count()
+  print: "Occupied blocks=" + world.occupied_blocks()
+  print: "Height at (0,0)=" + game.terrain_height(0, 0)
+  print: "Left boundary grass ID=" + game.get_block(0 - 1, game.terrain_height(0 - 1, 0), 0)
+  print: "Right boundary grass ID=" + game.get_block(0, game.terrain_height(0, 0), 0)
+  call: assert(game.stop() == 1)

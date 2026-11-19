@@ -1,0 +1,25 @@
+# Real flOW service wiring and legacy OW Engine scene tick remain stable.
+import "../src/craft/CraftGame.ow"
+
+main:
+  set game: new CraftGame()
+  call: assert(game.generate_terrain_column(0, 0) == 0, "start before generation")
+  call: assert(game.terrain_height(0, 0) == 0 - 1)
+  call: assert(game.start() == 1, "OWCraft + flOW + Engine")
+  call: assert(game.terrain_generator().seed() == 12345)
+  call: assert(game.set_world_seed(42) == 1)
+  call: assert(game.terrain_height(0, 0) == 12)
+  call: assert(game.generate_terrain_region(0, 0, 1, 1) == 1)
+  call: assert(game.world_store().chunk_count() == 2)
+  call: assert(game.get_block(0, 12, 0) == 1)
+  call: assert(game.get_block(0, 8, 7) == 5)
+  call: assert(game.place_block(0, 12, 0, 4) == 1)
+  call: assert(game.generate_terrain_column(0, 0) == 0)
+  call: assert(game.get_block(0, 12, 0) == 4)
+  call: assert(game.set_world_seed(43) == 0)
+  call: assert(game.set_player_velocity(125.0, 0.0, 0.0) == 1)
+  call: assert(game.tick(32) == 2, "Engine ECS scheduler keeps working")
+  call: assert(game.player_position()[0] == 4.0)
+  call: assert(game.scene_name() == "overworld")
+  call: assert(game.stop() == 1)
+  print: "PASS: seeded OWCraft terrain via flOW, game loop and ECS"

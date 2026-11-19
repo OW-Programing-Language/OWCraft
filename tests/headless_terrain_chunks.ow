@@ -1,0 +1,36 @@
+# Generated block layers, water, editable chunks and no overwrite.
+import "../src/craft/blocks/BlockCatalog.ow"
+import "../src/craft/world/WorldStore.ow"
+import "../src/craft/terrain/TerrainGenerator.ow"
+
+main:
+  set catalog: new BlockCatalog()
+  set world: new WorldStore(catalog)
+  set terrain: new TerrainGenerator(world, catalog, 42)
+  call: assert(terrain.generate_chunk(0, 0 - 1, 0) == 0, "no negative Y chunks")
+  call: assert(terrain.generate_chunk(0, 2, 0) == 0, "only y 0/1 are generated")
+  call: assert(terrain.generate_column(0, 0) == 1)
+  call: assert(world.chunk_count() == 2)
+  call: assert(world.get_block(0, 0, 0) == 3, "stone deep underground")
+  call: assert(world.get_block(0, 12, 0) == 1, "surface grass")
+  call: assert(world.get_block(0, 11, 0) == 2, "subsurface dirt")
+  call: assert(world.get_block(0, 8, 0) == 3, "deep subsurface stone")
+  call: assert(world.get_block(0, 20, 0) == 0, "above surface is air")
+  call: assert(terrain.height_at(0, 7) == 7, "known low terrain")
+  call: assert(world.get_block(0, 7, 7) == 1)
+  call: assert(world.get_block(0, 8, 7) == 5, "water fills low terrain")
+  call: assert(world.chunk_at(0, 0, 0).occupied_count() > 0)
+  call: assert(world.chunk_at(0, 0, 0).version() > 0)
+
+  set top int: terrain.height_at(0, 0)
+  call: assert(world.place_block(0, top, 0, catalog.id_of("glass")) == 1)
+  call: assert(terrain.generate_chunk(0, 0, 0) == 0, "loaded chunks are immutable to generator")
+  call: assert(terrain.generate_column(0, 0) == 0, "no accidental re-generation")
+  call: assert(world.get_block(0, top, 0) == 4, "glass edit survives")
+  call: assert(world.break_block(0, top, 0) == 1)
+  call: assert(world.get_block(0, top, 0) == 0)
+  call: assert(terrain.generate_column(0, 0) == 0)
+  call: assert(world.get_block(0, top, 0) == 0, "broken block stays air")
+  call: assert(terrain.set_seed(43) == 0, "seed cannot change after generation")
+  call: assert(terrain.seed() == 42)
+  print: "PASS: deterministic chunk layers, water and persistent edits in memory"
