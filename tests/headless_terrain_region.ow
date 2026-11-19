@@ -12,7 +12,7 @@ main:
   call: assert(world.get_block(0 - 1, terrain.height_at(0 - 1, 0), 0) == 1)
   call: assert(world.get_block(0, terrain.height_at(0, 0), 0) == 1)
   call: assert(world.get_block(0 - 16, 0, 0) == 3)
-  call: assert(world.get_block(15, 25, 0) == 0 - 1, "unloaded chunk is not air")
+  call: assert(world.get_block(16, 25, 0) == 0 - 1, "unloaded chunk is not air")
   call: assert(terrain.generate_region(0 - 1, 0, 2, 1) == 0, "existing columns rejected")
   call: assert(world.chunk_count() == 4, "preflight does not create partial region")
   call: assert(terrain.generate_region(0, 0, 0, 1) == 0)

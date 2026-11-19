@@ -66,3 +66,21 @@ jobs:
           java -jar ../ow-lang/target/OwIDE.jar run tests/headless_game_world.ow
           java -jar ../ow-lang/target/OwIDE.jar check tests/headless_capacity.ow
           java -jar ../ow-lang/target/OwIDE.jar run tests/headless_capacity.ow
+
+      - name: Verify seeded terrain noise and material layers
+        working-directory: owcraft
+        run: |
+          java -jar ../ow-lang/target/OwIDE.jar check tests/headless_terrain_height.ow
+          java -jar ../ow-lang/target/OwIDE.jar run tests/headless_terrain_height.ow
+          java -jar ../ow-lang/target/OwIDE.jar check tests/headless_terrain_chunks.ow
+          java -jar ../ow-lang/target/OwIDE.jar run tests/headless_terrain_chunks.ow
+
+      - name: Verify terrain regions, capacity and actual game integration
+        working-directory: owcraft
+        run: |
+          java -jar ../ow-lang/target/OwIDE.jar check tests/headless_terrain_region.ow
+          java -jar ../ow-lang/target/OwIDE.jar run tests/headless_terrain_region.ow
+          java -jar ../ow-lang/target/OwIDE.jar check tests/headless_terrain_game.ow
+          java -jar ../ow-lang/target/OwIDE.jar run tests/headless_terrain_game.ow
+          java -jar ../ow-lang/target/OwIDE.jar check examples/terrain_demo/main.ow
+          java -jar ../ow-lang/target/OwIDE.jar run examples/terrain_demo/main.ow
